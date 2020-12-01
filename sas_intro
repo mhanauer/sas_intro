@@ -1,0 +1,27 @@
+/* First SAS program  
+Need to load in data
+Create a modified third variable
+Run descirptives
+Get a histogram
+Get a graph by means
+Run t-test
+run linear regression
+run logistic regression*/
+/*To load in your CSV data rigt click for properties */
+data data_sas;
+	infile "/folders/myfolders/sasuser.v94/dat_sas.csv"
+	DLM=","
+	FIRSTOBS=2;
+	input a b $;
+run;
+
+proc print data = work.data_sas ;
+run;
+/*Only the first ten obs*/
+proc print data = data_sas(obs = 10);
+run;
+/* Get descriptives*/
+/*Get descriptives for just one variable use Tables and then set the variable name*/
+proc freq data = data_sas;
+Tables b;
+run;
