@@ -1,4 +1,4 @@
-/* First SAS program  
+/* First SAS program
 Need to load in data
 Create a modified third variable
 Run descirptives
@@ -9,19 +9,54 @@ run linear regression
 run logistic regression*/
 /*To load in your CSV data rigt click for properties */
 data data_sas;
-	infile "/folders/myfolders/sasuser.v94/dat_sas.csv"
-	DLM=","
-	FIRSTOBS=2;
+	infile "/folders/myfolders/sasuser.v94/dat_sas.csv" DLM="," FIRSTOBS=2;
 	input a b $;
 run;
 
-proc print data = work.data_sas ;
+proc print data=work.data_sas;
 run;
+
 /*Only the first ten obs*/
-proc print data = data_sas(obs = 10);
+proc print data=data_sas(obs=10);
 run;
+
 /* Get descriptives*/
 /*Get descriptives for just one variable use Tables and then set the variable name*/
+proc freq data=data_sas;
+	Tables b;
+run;
+/*how you round results*/
+proc means maxdec= 2 data = data_sas;
+var a;
+run;
+
+proc univariate data = data_sas;
+var a;
+histogram;
+run;
+/*mean by group*/
+proc means data= data_sas;
+class b; 
+var a;
+run;
 proc freq data = data_sas;
-Tables b;
+tables b;
+run;
+/*Logistic regression need reference for dummy coding */
+proc logistic data = data_sas;
+class b / param=reference;
+model b = a;
+run;
+/* Now linear regression*/
+proc reg data = data_sas;
+model a = b;
+run;
+proc contents data= data_sas;
+run;
+
+data data_sas_1; 
+b_num = input(b, best4.);
+run;
+proc freq data = data_sas;
+Tables b; 
 run;
