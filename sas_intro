@@ -47,16 +47,14 @@ proc logistic data = data_sas;
 class b / param=reference;
 model b = a;
 run;
+/*Need to recode b to numeric or factor to run linear regression
+Remember data is the new data set name when using the set argument*/
+data data_sas;
+set data_sas;
+b_new = input(b, 5.);
+run;
 /* Now linear regression*/
 proc reg data = data_sas;
-model a = b;
-run;
-proc contents data= data_sas;
+model a = b_new;
 run;
 
-data data_sas_1; 
-b_num = input(b, best4.);
-run;
-proc freq data = data_sas;
-Tables b; 
-run;
