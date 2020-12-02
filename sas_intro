@@ -13,7 +13,7 @@ data data_sas;
 	input a b $;
 run;
 
-proc print data=work.data_sas;
+proc print data=data_sas;
 run;
 
 /*Only the first ten obs*/
@@ -25,36 +25,71 @@ run;
 proc freq data=data_sas;
 	Tables b;
 run;
+
 /*how you round results*/
-proc means maxdec= 2 data = data_sas;
-var a;
+proc means maxdec=2 data=data_sas;
+	var a;
 run;
 
-proc univariate data = data_sas;
-var a;
-histogram;
+proc univariate data=data_sas;
+	var a;
+	histogram;
 run;
+
 /*mean by group*/
-proc means data= data_sas;
-class b; 
-var a;
-run;
-proc freq data = data_sas;
-tables b;
-run;
-/*Logistic regression need reference for dummy coding */
-proc logistic data = data_sas;
-class b / param=reference;
-model b = a;
-run;
-/*Need to recode b to numeric or factor to run linear regression
-Remember data is the new data set name when using the set argument*/
-data data_sas;
-set data_sas;
-b_new = input(b, 5.);
-run;
-/* Now linear regression*/
-proc reg data = data_sas;
-model a = b_new;
+proc means data=data_sas;
+	class b;
+	var a;
 run;
 
+proc freq data=data_sas;
+	tables b;
+run;
+
+/*Logistic regression need reference for dummy coding */
+proc logistic data=data_sas;
+	class b / param=reference;
+	model b=a;
+run;
+
+/*Need to recode b to numeric or factor to run linear regression
+Remember new data set in the data statement and old in the set statement*/
+data data_sas;
+	set data_sas;
+	b_new=input(b, 5.);
+run;
+
+/* Now linear regression*/
+proc reg data=data_sas;
+	model a=b_new;
+	run;
+
+	/*Drop a variable*/
+data data_sas_drop;
+	set data_sas;
+	drop b_new;
+run;
+
+/*If else statement to create a new variable need a then statement*/
+data students;
+	set data_sas;
+
+	if a > 0 then
+		exam="Pass";
+	else
+		exam="Fail";
+run;
+
+proc print data=data_sas;
+run;
+
+/*Try creating a total score need () for it to work*/
+data sample_new_vars;
+	set data_sas;
+	bmi=(a + b_new);
+run;
+
+/*T-test assumes equal vars need a way to adjust*/
+proc ttest data=data_sas;
+	var a;
+run;
