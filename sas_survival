@@ -31,8 +31,11 @@ proc univariate data=data_sas;
 run;
 
 /*Survival plot*/
-proc lifetest data=data_sas;
-	where fstat_num=1;
-	plots=survival(atrisk);
+proc lifetest data=data_sas plots = survival(atrisk cl);
+	time lenfol*fstat_num(0);
+	strata gender_bin;
+run;
+/*Try try graphing the hazzard function we need to see if this is constant*/
+proc lifetest data=data_sas plots = hazard(cl);
 	time lenfol*fstat_num(0);
 run;
