@@ -1,4 +1,5 @@
 /* First SAS program
+To import data select the folder and then the upload option (the arrow up)
 Need to load in data
 Create a modified third variable
 Run descirptives
@@ -86,10 +87,11 @@ run;
 /*Try creating a total score need () for it to work*/
 data sample_new_vars;
 	set data_sas;
-	bmi=(a + b_new);
+	new_var=(a + b_new);
 run;
 
 /*T-test assumes equal vars need a way to adjust*/
 proc ttest data=data_sas;
 	var a;
 run;
+
