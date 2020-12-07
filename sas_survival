@@ -1,0 +1,38 @@
+data data_sas;
+	infile "/folders/myfolders/sasuser.v94/dat_survival_sas.csv" DLM="," 
+		FIRSTOBS=2;
+	input ID AGE GENDER HR SYSBP DIASBP BMI CVD AFB SHO CHF AV3 MIORD MITYPE YEAR 
+		LOS DSTAT LENFOL FSTAT $;
+run;
+
+/*Change male to 0 and female to 1*/
+data data_sas;
+	set data_sas;
+
+	if gender=1 then
+		gender_bin="Female";
+	else
+		gender_bin="Male";
+run;
+
+proc contents data=data_sas;
+run;
+
+/*Change fstat to numeric*/
+data data_sas;
+	set data_sas;
+	fstat_num=input(fstat, 5.);
+run;
+
+proc univariate data=data_sas;
+	where fstat_num=1;
+	var lenfol;
+	histogram lenfol / kernel;
+run;
+
+/*Survival plot*/
+proc lifetest data=data_sas;
+	where fstat_num=1;
+	plots=survival(atrisk);
+	time lenfol*fstat_num(0);
+run;
