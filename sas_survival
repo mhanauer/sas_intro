@@ -31,11 +31,37 @@ proc univariate data=data_sas;
 run;
 
 /*Survival plot*/
-proc lifetest data=data_sas plots = survival(atrisk cl);
+proc lifetest data=data_sas plots=survival(atrisk cl);
 	time lenfol*fstat_num(0);
 	strata gender_bin;
 run;
+
 /*Try try graphing the hazzard function we need to see if this is constant*/
-proc lifetest data=data_sas plots = hazard(cl);
+proc lifetest data=data_sas plots=hazard(cl);
 	time lenfol*fstat_num(0);
+run;
+
+/* Try a Accelerated time model with log normal does include censored*/
+proc univariate data=data_sas;
+run;
+
+proc lifereg data=data_sas;
+	model lenfol*fstat_num(0)=DIASBP CVD / distribution=lnormal;
+
+	/*Get something similar to a qqplot for model fit*/
+	probplot;
+
+	/*Get predictions*/
+	output out=a PREDICTED=median std=s;
+
+	/* Try bayes*/
+	bayes;
+run;
+
+proc print data=a;
+run;
+
+/*Run cox prop version instead*/
+proc phreg data=data_sas;
+	model lenfol*fstat_num(0)=DIASBP CVD;
 run;
