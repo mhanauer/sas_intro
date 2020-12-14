@@ -63,5 +63,13 @@ run;
 
 /*Run cox prop version instead*/
 proc phreg data=data_sas;
-	model lenfol*fstat_num(0)=DIASBP CVD;
+	model lenfol*fstat_num(0)=DIASBP CVD / ties=exact;
+	/*Assess proportiality of effects over time*/
+	assess PH / resample;
+run;
+/*Get robust standard errors for repeated measures*/
+proc phreg data=data_sas COVSANDWICH(AGGREGATE);
+	model lenfol*fstat_num(0)=DIASBP CVD / ties=exact;
+	/*Assess proportiality of effects over time*/
+	assess PH / resample;
 run;
