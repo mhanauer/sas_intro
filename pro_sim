@@ -121,6 +121,7 @@ proc factor data = fact_dat_one_std
 	scree
 	rotate= varimax
 	reorder outstat= _all_
-	nfactors=1;
+	nfactors=1
+	plots=MAP;
 var v1-v6;
 run;
