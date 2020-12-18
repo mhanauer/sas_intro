@@ -1,97 +1,208 @@
-/* First SAS program
-To import data select the folder and then the upload option (the arrow up)
-Need to load in data
-Create a modified third variable
-Run descirptives
-Get a histogram
-Get a graph by means
-Run t-test
-run linear regression
-run logistic regression*/
-/*To load in your CSV data rigt click for properties */
-data data_sas;
-	infile "/folders/myfolders/sasuser.v94/dat_sas.csv" DLM="," FIRSTOBS=2;
-	input a b $;
+/*PRO simulation code*/
+/*Create a correlation data set*/
+data _corr_ (type=corr);
+	input _type_ $ _name_ $ conf pcs mcs;
+	datalines;
+ 	corr conf 1 .3 .5
+ 	corr pcs .3 1 .4
+ 	corr mcs .5 .4 1
+ 	mean . 47 50 47
+ 	std . 15 12 16
+ 	n . 200 200 200
+ 	;
 run;
 
-proc print data=data_sas;
+proc contents data=work._corr_;
 run;
 
-/*Only the first ten obs*/
-proc print data=data_sas(obs=10);
-run;
-
-/* Get descriptives*/
-/*Get descriptives for just one variable use Tables and then set the variable name*/
-proc freq data=data_sas;
-	Tables b;
-run;
-
-/*how you round results*/
-proc means maxdec=2 data=data_sas;
-	var a;
-run;
-
-proc univariate data=data_sas;
-	var a;
-	histogram;
-run;
-
-/*mean by group*/
-proc means data=data_sas;
-	class b;
-	var a;
-run;
-
-proc freq data=data_sas;
-	tables b;
-run;
-
-/*Logistic regression need reference for dummy coding */
-proc logistic data=data_sas;
-	class b / param=reference;
-	model b=a;
-run;
-
-/*Need to recode b to numeric or factor to run linear regression
-Remember new data set in the data statement and old in the set statement*/
-data data_sas;
-	set data_sas;
-	b_new=input(b, 5.);
-run;
-
-/* Now linear regression*/
-proc reg data=data_sas;
-	model a=b_new;
+proc datasets library=work;
 	run;
 
-	/*Drop a variable*/
-data data_sas_drop;
-	set data_sas;
-	drop b_new;
+	/*Now simulate data based on the correlation matrix above*/
+	/*Not sure why proc simnormal won't pick up data set*/
+proc simnormal data=work._corr_ out=sim_corr_ numreal=200 seed=123;
+	var conf pcs mcs;
 run;
 
-/*If else statement to create a new variable need a then statement*/
-data students;
-	set data_sas;
+/*Try ICC example*/
+options nofmterr pagesize=2000 linesize=256;
+%Let NumberOfRows = 307;
+%Let NumberOfRepeatedMeasures = 14;
+%Let a = 2;
+%Let sp = .1;
+%Let se = .08;
 
-	if a > 0 then
-		exam="Pass";
-	else
-		exam="Fail";
+Data _icc_;
+	Do ID=1 To &NumberOfRows;
+		ep=rannor(1)*sqrt(&sp);
+
+		Do i=1 To (1+Int(&NumberOfRepeatedMeasures*ranuni(2)));
+			y=&a + ep + rannor(3)*sqrt(&se);
+			output;
+		End;
+	End;
+	Keep i y ID;
 run;
 
-proc print data=data_sas;
+proc means maxdec=2 data=_icc_;
+	var y;
 run;
 
-/*Try creating a total score need () for it to work*/
-data sample_new_vars;
-	set data_sas;
-	new_var=(a + b_new);
+proc mixed data=_icc_;
+	class ID;
+	model y=;
+	random Int / subject=ID;
 run;
 
-/*T-test assumes equal vars need a way to adjust*/
-proc ttest data=data_sas;
-	var a;
+/*EFA simulation*/
+/*Simulate two factors with random normal*/
+/*ranuni is a random number between 0 and 1 with uniform distribution*/
+/*the number in ranuni is the seed*/
+data fact_dat;
+	Do ID=1 to 100;
+		F1=ranuni(1);
+		F2=ranuni(2);
+		output;
+	end;
+	keep F1 F2;
 run;
+
+/*Now create factor*/
+/* .7 is the factor loading and 1 is the value of the error with some random distribution*/
+data fac_dat_all;
+	set fact_dat;
+	v1=F1*.7 + .1 * rannor(1);
+	v2=F1*.7 + .1 * rannor(2);
+	v3=F1*.7 + .1 * rannor(3);
+	v4=F2*.7 + .1 * rannor(4);
+	v5=F2*.7 + .1 * rannor(5);
+	v6=F2*.7 + .1 * rannor(6);
+	drop F1 F2;
+run;
+
+/*This says cannot go above 7 or below 0*/
+proc stdize data=fac_dat_all out=fac_dat_all_std method=range mult=7 add=0;
+	var v1-v6;
+run;
+
+proc means data=fac_dat_all_std;
+	var v1-v6;
+run;
+
+/*Now do EFA*/
+proc factor data=fac_dat_all_std method=ml priors=SMC scree rotate=promax 
+		reorder outstat=_all_ nfactors=2;
+	var v1-v6;
+run;
+
+/*Try power analysis for one factor*/
+data fact_dat_one;
+	set fact_dat;
+	v1=F1*.7 +  rand("Normal", 0, .2);
+	v2=F1*.7 +  rand("Normal", 0, .2);
+	v3=F1*.7 +  rand("Normal", 0, .2);
+	v4=F1*.7 +  rand("Normal", 0, .2);
+	v5=F1*.7 +  rand("Normal", 0, .2);
+	v6=F1*.7 +  rand("Normal", 0, .2);
+	drop F1 F2;
+run;
+
+/*This says cannot go above 7 or below 0
+Is changing the values a lot not sure why?*/
+proc stdize data=fact_dat_one out=fact_dat_one_std method=range mult=7 add=0;
+	var v1-v6;
+run;
+
+proc factor data=fact_dat_one_std method=ml priors=SMC scree rotate=varimax 
+		reorder outstat=_all_ nfactors=1 plots=MAP;
+	var v1-v6;
+run;
+
+/*CFA*/
+data cfa_dat;
+	Do ID=1 to 100;
+		F1=ranuni(1);
+		F2=ranuni(2);
+		output;
+	end;
+	keep F1 F2;
+run;
+
+/*Standard values with mean of 0 and sd of 1*/
+proc stdize data=cfa_dat out=cfa_dat_std;
+	var f1 f2;
+run;
+
+proc corr data=cfa_dat_std;
+run;
+
+data cfa_dat_std_two;
+	set cfa_dat_std;
+	v1=F1*.7 +  rand("Normal", 0, .2);
+	v2=F1*.7 +  rand("Normal", 0, .2);
+	v3=F1*.7 +  rand("Normal", 0, .2);
+	v4=F2*.7 +  rand("Normal", 0, .2);
+	v5=F2*.7 +  rand("Normal", 0, .2);
+	v6=F2*.7 +  rand("Normal", 0, .2);
+	drop F1 F2;
+run;
+
+/*Run CFA with ML and two factors*/
+proc calis COV data=cfa_dat_std_two method=ml ALL;
+	Lineqs v1=lv01f1 f1 + e01, v2=lv02f1 f1 + e02, v3=lv03f1 f1 + e03, v4=lv04f2 
+		f2 + e04, v5=lv05f1 f2 + e05, v6=lv06f1 f2 + e06;
+	std f1=1, f2=1, e01=vare01, e02=vare02, e03=vare03, e04=vare04, e05=vare05, 
+		e06=vare06;
+	cov f1 f2=cf1f2;
+run;
+
+/*Now IRT models*/
+data irt_dat;
+	infile "/folders/myfolders/sasuser.v94/poly_irt_sas.csv" DLM="," FIRSTOBS=2;
+	input S1wantcurse S1WantScold S1WantShout S2wantcurse S2WantScold S2WantShout 
+		S3wantcurse S3WantScold S3WantShout S4wantcurse S4WantScold S4WantShout 
+		S1Docurse S1DoScold S1DoShout S2Docurse S2DoScold S2DoShout S3Docurse 
+		S3DoScold S3DoShout S4Docurse S4DoScold S4DoShout Anger Geslacht $;
+run;
+
+proc irt data=irt_dat plots=all;
+	var S1wantcurse S1WantScold S1WantShout;
+run;
+
+/*Now try simulating random intercepts and slopes*/
+data scov(type=COV) ;
+input _TYPE_ $ _NAME_ $ S1 S2 ;
+datalines ;
+COV ran_int 1 0.2
+COV ran_slope .2 1
+MEAN 0 0
+run;
+proc simnormal data = scov out = sim_scov numreal= 200 seed = 124;
+var ran_int  ran_slope;
+run; 
+/*Try above after you figure out how to get simnormal to read a data set*/
+data ran_int_slopes;
+call streaminit(123);
+do i = 1 to 200;
+ran_int = rand("Normal", 0, .2);
+ran_slope = rand("Normal", 0, .2);
+/*Repeat each value 10 times*/
+output;
+end;
+run;
+data ran_int_slopes_rep;
+    set ran_int_slopes;
+    do week =1 to 10;
+        output;
+    end;
+run;
+
+
+data multi_data;
+	set =ran_int_slopes_rep;
+	y = 5 + 5*week + ran_int + ran_slope + week + rand("Normal", 0, .2);
+	output;
+run;
+
+
 
