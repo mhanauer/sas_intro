@@ -90,7 +90,7 @@ proc means data=fac_dat_all_std;
 run;
 
 /*Now do EFA*/
-proc factor data=fac_dat_all_std method=ml priors=SMC scree rotate=promax 
+proc factor data=fac_dat_all_std method=ml priors=SMC scree rotate=promax
 		reorder outstat=_all_ nfactors=2;
 	var v1-v6;
 run;
@@ -148,7 +148,7 @@ data cfa_dat_std_two;
 run;
 
 /*Run CFA with ML and two factors*/
-proc calis COV data=cfa_dat_std_two method=ml ALL;
+proc calis COV data=cfa_dat_std_two method=ml ALL plots= pathdiagram;
 	Lineqs v1=lv01f1 f1 + e01, v2=lv02f1 f1 + e02, v3=lv03f1 f1 + e03, v4=lv04f2 
 		f2 + e04, v5=lv05f1 f2 + e05, v6=lv06f1 f2 + e06;
 	std f1=1, f2=1, e01=vare01, e02=vare02, e03=vare03, e04=vare04, e05=vare05, 
@@ -165,8 +165,9 @@ data irt_dat;
 		S3DoScold S3DoShout S4Docurse S4DoScold S4DoShout Anger Geslacht $;
 run;
 
-proc irt data=irt_dat plots=all;
-	var S1wantcurse S1WantScold S1WantShout;
+ods graphics on;
+proc irt data=irt_dat plots=all outmodel= test;
+	var S1wantcurse S1WantScold S1WantShout S2wantcurse S2WantScold S2WantShout;
 run;
 
 /*Now try simulating random intercepts and slopes*/
@@ -204,7 +205,7 @@ run;
 /*Then create the model*/
 data multi_data;
 	set ran_int_slopes_rep;
-	y=5 + 4*week + ran_int + ran_slope + week + rand("Normal", 0, .2);
+	y=5 + 4*week + ran_int + ran_slope + rand("Normal", 0, .2);
 	output;
 run;
 
@@ -213,4 +214,5 @@ proc mixed data = multi_data;
 	model y = week / solution ddfm = kr;
 	random intercept week / subject= i type = un solution;
 run;
+
 
