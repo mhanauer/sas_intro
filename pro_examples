@@ -1,0 +1,21 @@
+data irt_dat;
+	infile "/folders/myfolders/sasuser.v94/poly_irt_sas.csv" DLM="," FIRSTOBS=2;
+	input S1wantcurse S1WantScold S1WantShout S2wantcurse S2WantScold S2WantShout 
+		S3wantcurse S3WantScold S3WantShout S4wantcurse S4WantScold S4WantShout 
+		S1Docurse S1DoScold S1DoShout S2Docurse S2DoScold S2DoShout S3Docurse 
+		S3DoScold S3DoShout S4Docurse S4DoScold S4DoShout Anger Geslacht $;
+run;
+ods graphics on;
+/*out= test gives you the data set with the theta values or factor scores*/
+proc irt data=irt_dat plots=all out= test;
+	var S1wantcurse S1WantScold S1WantShout S2wantcurse S2WantScold S2WantShout S4Docurse;
+run;
+proc print data = test;
+run;
+/*Create a t-score which is t = 50+10*z*/
+data test_t;
+	set test;
+	t_score = 50+10*_Factor1;
+run;
+proc means data = test_t;
+run;
