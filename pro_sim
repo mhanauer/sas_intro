@@ -90,7 +90,7 @@ proc means data=fac_dat_all_std;
 run;
 
 /*Now do EFA*/
-proc factor data=fac_dat_all_std method=ml priors=SMC scree rotate=promax
+proc factor data=fac_dat_all_std method=ml priors=SMC scree rotate=promax 
 		reorder outstat=_all_ nfactors=2;
 	var v1-v6;
 run;
@@ -148,7 +148,7 @@ data cfa_dat_std_two;
 run;
 
 /*Run CFA with ML and two factors*/
-proc calis COV data=cfa_dat_std_two method=ml ALL plots= pathdiagram;
+proc calis COV data=cfa_dat_std_two method=ml ALL plots=pathdiagram;
 	Lineqs v1=lv01f1 f1 + e01, v2=lv02f1 f1 + e02, v3=lv03f1 f1 + e03, v4=lv04f2 
 		f2 + e04, v5=lv05f1 f2 + e05, v6=lv06f1 f2 + e06;
 	std f1=1, f2=1, e01=vare01, e02=vare02, e03=vare03, e04=vare04, e05=vare05, 
@@ -166,7 +166,8 @@ data irt_dat;
 run;
 
 ods graphics on;
-proc irt data=irt_dat plots=all outmodel= test;
+
+proc irt data=irt_dat plots=all outmodel=test;
 	var S1wantcurse S1WantScold S1WantShout S2wantcurse S2WantScold S2WantShout;
 run;
 
@@ -186,14 +187,14 @@ run;
 /*Try above after you figure out how to get simnormal to read a data set
 Simluating rand intercept and slopes on their own assuming no correlation*/
 data ran_int_slopes;
-	call streaminit(123);
-
 	do i=1 to 200;
 		ran_int=rand("Normal", 0, .2);
 		ran_slope=rand("Normal", 0, .2);
+		treat=rand("Uniform");
 		output;
 	end;
 run;
+
 /*Repeat each value 10 times so we get the random effects for each subject*/
 data ran_int_slopes_rep;
 	set ran_int_slopes;
@@ -202,17 +203,42 @@ data ran_int_slopes_rep;
 		output;
 	end;
 run;
+
+/*Select from a random uniform distribution then if value is at or above .5 make 1*/
+data ran_int_slopes_rep;
+	set ran_int_slopes_rep;
+
+	if treat >=.5 then
+		treat=1;
+	else
+		treat=0;
+run;
+
 /*Then create the model*/
 data multi_data;
 	set ran_int_slopes_rep;
-	y=5 + 4*week + ran_int + ran_slope + rand("Normal", 0, .2);
+	y=5 + 4*week +  treat*1+ ran_int + ran_slope + rand("Normal", 0, .2);
 	output;
 run;
 
-proc mixed data = multi_data;
-	class i;
-	model y = week / solution ddfm = kr;
-	random intercept week / subject= i type = un solution;
+/*Create some missing data anything over 30 in the outcome variable make missing*/
+data multi_data;
+	set multi_data;
+	if y > 30 then y = .;
 run;
+/*Impute the missing data use this because it imputes */
+proc mi data = multi_data out = multi_data_impute;
+	var y week treat;
+	mcmc chain =multiple impute = monotone;
+run;
+proc sort data = multi_data_impute; 
+	by _Imptuation_ treatment; 
+	run;
 
+
+proc mixed data=multi_data;
+	class i;
+	model y=week treat / solution ddfm=kr;
+	random intercept week / subject=i type=un solution;
+run;
 
